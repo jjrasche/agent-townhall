@@ -46,10 +46,10 @@ abstract class ObservationEventRepository extends EntityRepository<ObservationEv
   /// Returns top K results with score > threshold
   Future<List<ObservationEvent>> semanticSearch(
     String roomId,
-    String query,
+    String query, {
     int topK = 5,
     double scoreThreshold = 0.6,
-  );
+  });
 
   /// Find events replying to a specific event (threading)
   Future<List<ObservationEvent>> findReplies(String eventId);
@@ -81,9 +81,9 @@ abstract class NarrativeRepository extends EntityRepository<Narrative> {
   /// Semantic search across narratives
   Future<List<Narrative>> semanticSearch(
     String roomId,
-    String query,
+    String query, {
     int topK = 5,
-  );
+  });
 }
 
 /// TaskAssignment repository - work units assigned to agents
