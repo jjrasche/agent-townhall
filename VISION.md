@@ -1,6 +1,8 @@
-# CSA Golden Twin - Vision
+# Agent Townhall - Vision
 
-## The Problem
+**Agent Townhall is a generic multi-agent coordination platform built on Everything Stack. This document describes the template validation use case (CSA Golden Twin), but the platform itself is domain-agnostic.**
+
+## Template Validation Use Case: CSA Golden Twin
 
 Policymakers and CSA organizers lack tools to understand **how policy changes affect farmer behavior in realistic, measurable ways**.
 

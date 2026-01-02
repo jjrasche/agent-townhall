@@ -1,24 +1,33 @@
-# Agent Town Hall
+# Agent Townhall
 
 **Multi-agent coordination platform. One workspace. All agents. All outcomes.**
 
-Agent Town Hall is where multiple AI agents collaborate on solving complex problems:
-- **Shared workspace** — Agents publish proposals, questions, answers, decisions on a semantic whiteboard
+Agent Townhall is a generic platform where multiple AI agents collaborate on solving complex problems:
+- **Shared workspace** — Agents publish observations on a semantic whiteboard
 - **Asynchronous coordination** — Agents discover work by meaning, not manual relay
-- **Simulation execution** — Digital twin runs in the same workspace, everyone sees outcomes
-- **Real-time monitoring** — One UI shows agent conversation + simulation state + results
-- **Learning from feedback** — System improves agent proposals and persona thresholds over time
+- **Manager orchestration** — Human manager defines scope, edits summaries, assigns tasks
+- **Learning from feedback** — System improves agent personas and decision-making over time
+- **Cross-platform** — Built on Everything Stack, runs on all 6 platforms (iOS, Android, Web, macOS, Windows, Linux)
 
-Built on Everything Stack — runs on all 6 platforms (iOS, Android, Web, macOS, Windows, Linux).
+## Use Case: CSA Golden Twin (Template Validation)
+
+Agent Townhall is being validated by building CSA Golden Twin: a policy simulation platform where agents coordinate to model farmer behavior under different policy scenarios.
 
 ## Current Status
 
-### 🔄 Phase 1: Foundation (IN PROGRESS)
-- Entity model: AgentEvent, AgentState, SimulationContext, FarmerPersona, SimulationResult
+### 🔄 Phase 0: Contract Completion (IN PROGRESS)
+- Resolve project scope (generic platform vs. domain-specific) ✅
+- Complete entity JSON schema specifications
+- Complete tool contract definitions
+- Write Phase 1 BDD test scenarios
+- **Timeline**: 2-3 days
+
+### ⏳ Phase 1: Foundation (Starting After Phase 0)
+- Domain entities: Room, Agent, Role, Persona, PersonaAdaptation, Turn, ObservationEvent, Narrative, TaskAssignment
 - Repositories with dual persistence (ObjectBox native, IndexedDB web)
-- WhiteboardService with semantic search (HNSW)
-- MCP tools for agent communication
-- CI/CD workflows (test on all platforms)
+- AgentOrchestrator for agent execution logic
+- Core tools: PublishObservationTool, DiscoveryTool, NarrativeTool, TaskTool, TurnManagementTool
+- E2E test: One complete turn cycle
 
 ### ⏳ Phase 2: Coordination Workflow
 - Proposal → approval → implementation flow
