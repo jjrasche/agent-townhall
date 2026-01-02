@@ -1,34 +1,35 @@
-# CSA Golden Twin
+# Agent Town Hall
 
-**A digital farm simulation for realistic policy exploration.**
+**Multi-agent coordination platform. One workspace. All agents. All outcomes.**
 
-CSA Golden Twin models realistic farmer behavior to test policies before implementation. It combines:
-- **3D farm visualization** with worker NPCs
-- **Realistic farmer personas** with emotional state and decision-making
-- **Policy parameter exploration** (subsidies, regulations, incentives)
-- **Multi-agent coordination** where AI agents (Architect, Coder, Researcher) collaborate on building the simulation
-- **Learning from feedback** to improve persona behavior and policy recommendations
+Agent Town Hall is where multiple AI agents collaborate on solving complex problems:
+- **Shared workspace** — Agents publish proposals, questions, answers, decisions on a semantic whiteboard
+- **Asynchronous coordination** — Agents discover work by meaning, not manual relay
+- **Simulation execution** — Digital twin runs in the same workspace, everyone sees outcomes
+- **Real-time monitoring** — One UI shows agent conversation + simulation state + results
+- **Learning from feedback** — System improves agent proposals and persona thresholds over time
 
-Built on Everything Stack - a semantic layer for execution and learning across all platforms.
+Built on Everything Stack — runs on all 6 platforms (iOS, Android, Web, macOS, Windows, Linux).
 
 ## Current Status
 
-### ✅ Phase 1: Visual Foundation
-- 3D CSA scene with Three.js
-- Worker NPCs with 12 distinct actions
-- Policy slider UI
-- Clickable zones and worker legend
+### 🔄 Phase 1: Foundation (IN PROGRESS)
+- Entity model: AgentEvent, AgentState, SimulationContext, FarmerPersona, SimulationResult
+- Repositories with dual persistence (ObjectBox native, IndexedDB web)
+- WhiteboardService with semantic search (HNSW)
+- MCP tools for agent communication
+- CI/CD workflows (test on all platforms)
 
-### 🔄 Phase 2: Multi-Agent Coordination (IN PROGRESS)
-- Semantic whiteboard (HNSW-indexed event log)
-- AgentEvent entity for inter-agent communication
-- Simulation service with realistic personas
-- Learning adaptation from feedback
+### ⏳ Phase 2: Coordination Workflow
+- Proposal → approval → implementation flow
+- SimulationService for digital twin execution
+- Invocation logging throughout
+- Workspace UI
 
-### ⏳ Phase 3+: Learning Loop & Polish
-- Feedback collection on personas and policies
-- Simulation outcome tracking
-- E2E tests on all platforms
+### ⏳ Phase 3+: Learning & Integration
+- Feedback collection and adaptation
+- Cross-platform testing
+- Production deployment
 
 ---
 

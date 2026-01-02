@@ -1,0 +1,148 @@
+name: CI - Cross-Platform Tests
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+
+jobs:
+  test:
+    name: Test on ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Web
+          - os: ubuntu-latest
+            platform: web
+            flutter-version: ${{ env.FLUTTER_VERSION }}
+
+          # Android
+          - os: ubuntu-latest
+            platform: android
+            flutter-version: ${{ env.FLUTTER_VERSION }}
+
+          # Windows
+          - os: windows-latest
+            platform: windows
+            flutter-version: ${{ env.FLUTTER_VERSION }}
+
+          # macOS
+          - os: macos-latest
+            platform: macos
+            flutter-version: ${{ env.FLUTTER_VERSION }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run analyzer
+        run: flutter analyze
+
+      - name: Run tests (Web)
+        if: matrix.platform == 'web'
+        run: flutter test integration_test/ -d chrome --coverage
+
+      - name: Run tests (Android)
+        if: matrix.platform == 'android'
+        run: flutter test integration_test/ -d android
+
+      - name: Run tests (Windows)
+        if: matrix.platform == 'windows'
+        run: flutter test integration_test/ -d windows
+
+      - name: Run tests (macOS)
+        if: matrix.platform == 'macos'
+        run: flutter test integration_test/ -d macos
+
+      - name: Upload coverage
+        if: matrix.platform == 'web'
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Web
+          - os: ubuntu-latest
+            target: web
+            build-cmd: "flutter build web --release"
+
+          # Android
+          - os: ubuntu-latest
+            target: android
+            build-cmd: "flutter build apk --release"
+
+          # Windows
+          - os: windows-latest
+            target: windows
+            build-cmd: "flutter build windows --release"
+
+          # macOS
+          - os: macos-latest
+            target: macos
+            build-cmd: "flutter build macos --release"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build ${{ matrix.target }}
+        run: ${{ matrix.build-cmd }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target }}-build
+          path: |
+            build/web/
+            build/app/outputs/
+            build/macos/Build/Products/Release/
+
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Check formatting
+        run: flutter format --set-exit-if-changed lib/ test/
+
+      - name: Run linter
+        run: flutter analyze --fatal-infos

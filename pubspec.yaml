@@ -1,10 +1,14 @@
-name: everything_stack_template
-description: Everything Stack template - clone and customize for your project.
-version: 0.2.1
+name: agent_town_hall
+description: Agent Town Hall - Multi-agent coordination platform with unified workspace.
+version: 0.1.0
 
-# Update these when initializing your project:
-# name: your_project_name
-# description: Your project description
+# Project Info:
+# A workspace where multiple AI agents (Architect, Coder, Researcher, Ideation) collaborate
+# asynchronously on shared problems. Agents publish proposals, questions, answers, and decisions
+# on a semantic whiteboard. Simulations execute in the same workspace, providing digital twin
+# monitoring of outcomes. Everything Stack foundation enables cross-platform (iOS, Android, Web,
+# macOS, Windows, Linux) and learning from feedback. First real-world project validating
+# Everything Stack template.
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
