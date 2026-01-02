@@ -1,239 +1,431 @@
-# Agent Town Hall Architecture
+# Agent Townhall Architecture
 
-**A turn-based multi-agent coordination platform built on Everything Stack.**
-
----
-
-## Overview
-
-Agent Town Hall is a workspace where multiple AI agents collaborate asynchronously on solving complex problems. Agents publish contributions (proposals, questions, answers, decisions) to a shared semantic whiteboard. A human manager orchestrates work between turns by reviewing event summaries and assigning explicit direction when needed.
-
-**The Flow:**
-1. **Active Phase** — Agents work simultaneously, discovering work via semantic search of the whiteboard
-2. **Review Phase** — Manager reviews agent contributions, optionally assigns explicit work
-3. **Next Turn** — Agents resume, incorporating manager feedback
+**Multi-agent coordination platform built on Everything Stack.**
 
 ---
 
-## Goals
+## Core Vision
 
-Agent Town Hall achieves:
-
-1. **Asynchronous coordination** — Agents discover work autonomously (80%) via semantic search rather than explicit instruction
-2. **Manager curation** — Human reviews outputs between turns, assigns priority when needed (20% of coordination)
-3. **Observable outcomes** — One UI shows agent conversation, decisions, assigned work, and simulation results
+Agent Townhall enables multiple AI agents to collaborate asynchronously within a shared room. Agents publish observations, discover work via semantic search, and coordinately solve complex problems. A human manager orchestrates the workspace: defines scope, edits summaries, assigns work, and decides when scope is complete. Everything is logged for continuous learning.
 
 ---
 
-## Core Design Principles
+## Fundamental Design
 
-### 1. Turn-Based Boundaries
-Work is organized into discrete turns. Each turn has:
-- **Start**: Agents begin work phase
-- **Work**: Agents publish events, discover related work via whiteboard search
-- **End**: NarrativeService extracts intent, generates summaries
-- **Review**: Manager reads summaries, optionally assigns explicit work
-- **Next Turn**: Context carries forward
+### Execution Fungibility (Everything Stack Core)
+Humans and agents use identical infrastructure:
 
-Turns prevent chaos (agents talking at cross-purposes) and create natural review points (manager reads 1 summary per turn, not 100 individual events).
+- **Human path**: Voice → Coordinator → LLM reasoning → tool execution → response
+- **Agent path**: Event trigger → AgentOrchestrator → deterministic logic → tool execution → observation
 
-### 2. Semantic Whiteboard
-The whiteboard is a searchable event log where agents publish and discover work. Agents don't receive explicit instructions; they search for:
-- Open questions needing answers
-- Proposals needing feedback
-- Decisions needing implementation
+Both paths:
+- Use ToolExecutor identically
+- Log Invocations identically
+- Train from same feedback loop
+- Persist results identically
 
-**Why**: 80% of agent work comes from discovering what matters via semantic similarity. This is more aligned with how actual reasoning works than explicit task lists.
+Swap human for agent, LLM for rules, local for remote—infrastructure doesn't care.
 
-### 3. Event-Driven Architecture
-All agent communication is events. Agents publish to the whiteboard; the system doesn't prescribe *how* agents talk to each other.
+### Separation of Concerns
+- **Role** = Functional responsibility (Architect, Coder, Analyst—what they do)
+- **Persona** = Individual style (pragmatist, perfectionist, methodical—who they are)
+- **Agent** = Role + Persona in a Room (concrete instance)
 
-Event types:
-- **AgentEvent** — Something an agent published (proposal, question, answer, decision)
-- **Invocation** — A component executed (from Everything Stack; logs agent internal processing)
-- **TaskAssignment** — Manager explicitly assigned work to an agent
-- **Feedback** — User feedback on agent outputs or system decisions
-
-### 4. Manager Curation (20%)
-The manager doesn't instruct agents continuously. Instead, between turns:
-- Manager reads AI-generated summaries (TurnSummary)
-- Manager can assign explicit work (TaskAssignment) if 80% autonomous discovery isn't sufficient
-- This is intentional friction—forces explicit decision-making rather than micromanagement
-
-### 5. Background Narrative Service
-End-of-turn, NarrativeService:
-- Ingests all events from the turn
-- Extracts agent intent per agent
-- Generates context (what did we learn? what's unclear?)
-- Attaches as metadata to TurnSummary (not a new event)
-
-This prevents decision fatigue—manager sees 4 summaries, not 100 individual events.
+An agent has both. A role can have multiple personas. A persona can be assigned to different roles.
 
 ---
 
 ## Core Entities
 
-### AgentEvent
-An agent published something to the whiteboard.
+### Room
+Collaboration scope container.
 
 **Fields:**
-- `agentId: String` — Which agent
-- `eventType: String` — 'proposal', 'question', 'answer', 'decision'
-- `content: String` — What the agent said
-- `correlationId: String` — Links to the turn
-- `timestamp: DateTime`
-- `embedding: List<double>?` — Vector for semantic search
-
-**Why separate class**: AgentEvent is a first-class domain concept in Agent Town Hall, not a generic "event with type='agent'".
-
-### TaskAssignment
-Manager explicitly assigned work to an agent.
-
-**Fields:**
-- `agentId: String` — Which agent
-- `description: String` — What to do
-- `priority: int` — 1-5 (5=urgent)
-- `createdBy: String` — Manager who assigned
+- `id: String` (UUID)
+- `name: String`
+- `description: String` (what scope is being solved)
+- `agentIds: List<String>` (current roster)
+- `status: String` ('active', 'completed', 'archived')
 - `createdAt: DateTime`
 - `completedAt: DateTime?`
-- `turnId: String` — Which turn this was assigned in
 
-**Why**: Distinguishes "agent discovered this themselves" from "manager explicitly said do this". Trainable later (did explicit assignments outperform autonomous discovery?).
+**Why:** Rooms partition data and define scope. All entities scoped by roomId. Manager decides when scope is complete and room transitions to completed/archived.
 
-### TurnSummary
-End-of-turn snapshot.
+### Agent
+Concrete instance of role + persona in a room.
 
 **Fields:**
-- `turnNumber: int`
-- `events: List<AgentEvent>` — All agent contributions this turn
-- `assignments: List<TaskAssignment>` — Manager assignments this turn
-- `narratives: Map<String, String>` — Per-agent summaries (agentId → narrative)
-- `systemSummary: String` — What did the system learn this turn?
-- `startedAt: DateTime`, `endedAt: DateTime`
+- `id: String` (UUID)
+- `roomId: String` (which room)
+- `roleId: String` (link to Role)
+- `personaId: String` (link to Persona)
+- `personaAdaptationId: String` (learned behavior specific to this agent instance)
+- `createdAt: DateTime`
 
-**Why**: Atomic boundary for manager review. One thing to read per turn.
+**Why:** Agents have state (PersonaAdaptation per agent instance). No autonomous joining/leaving—all orchestrated by manager.
+
+### Role
+Shared archetype defining function and system prompt base.
+
+**Fields:**
+- `id: String` (UUID)
+- `name: String` ('Architect', 'Coder', 'Analyst')
+- `systemPrompt: String` (how this role thinks)
+- `description: String`
+- `createdAt: DateTime`
+
+**Why:** Multiple agents can share a role. Immutable (doesn't change mid-room).
 
 ### Persona
-Represents an agent's identity and learnable behavior.
+Shared style/characteristic pattern.
 
 **Fields:**
-- `agentId: String` — Unique agent identifier
-- `name: String` — Display name
-- `role: String?` — "architect", "coder", etc. (optional, not prescriptive)
-- `systemPrompt: String` — How agent thinks
-- `threshold: double` — Confidence threshold for publishing (trainable)
-- `discoveryStrategy: String` — How agent searches whiteboard (trainable)
+- `id: String` (UUID)
+- `name: String` ('pragmatist', 'perfectionist', 'methodical')
+- `description: String` (behaviors, preferences)
+- `createdAt: DateTime`
 
-**Why separate entity**: Personas are trainable. Over time, the system learns which thresholds and strategies work for each agent.
+**Why:** Decoupled from role. Manager can create new personas on-the-fly. Agents can swap personas mid-room.
+
+### PersonaAdaptation
+What an agent learned specific to their persona.
+
+**Fields:**
+- `id: String` (UUID)
+- `agentId: String` (which agent)
+- `personaId: String` (which persona—for tracking persona-specific learning)
+- `roomId: String` (which room context)
+- `learnedThresholds: Map<String, double>` (confidence adjustments, strategy weights)
+- `observationCounts: Map<String, int>` (how many times each observation type used)
+- `version: int` (for optimistic locking on multi-device)
+
+**Patterns:** Trainable — learns from feedback on agent performance
+
+**Why:** If agent swaps personas mid-room, learning doesn't transfer. Each (agent, persona) pair has separate adaptation. Enables: "Agent learned X as analyst, but as architect they learn Y differently."
+
+### Turn
+Temporal boundary and metadata holder for entire room state.
+
+**Fields:**
+- `id: String` (UUID)
+- `roomId: String`
+- `turnNumber: int` (sequence in room)
+- `startedAt: DateTime`
+- `endedAt: DateTime?`
+- `narrativeId: String?` (reference to generated narrative)
+- `eventCount: int` (how many ObservationEvents published)
+- `agentStates: Map<String, dynamic>` (snapshot of agent state at turn end)
+
+**Why:** Structural boundary. Holds metadata to contextualize entire turn. Agents work concurrently during turn. Turn ends when manager decides or system heuristic triggers (e.g., "10+ events published").
+
+### ObservationEvent
+Agent publishes observation to room.
+
+**Fields:**
+- `id: String` (UUID)
+- `agentId: String` (which agent)
+- `roomId: String` (which room)
+- `turnNumber: int` (which turn)
+- `eventType: String` ('question', 'blocker', 'solution', 'agreement', 'disagreement', 'observation', 'decision', 'analysis', 'concern', 'clarification')
+- `content: String` (human-readable statement)
+- `respondingToEventId: String?` (parent event—threading)
+- `confidence: double?` (agent's confidence 0.0-1.0)
+- `timestamp: DateTime`
+- `embedding: List<double>?` (vector for semantic search)
+
+**Patterns:** Embeddable (agents search "find blockers", "find unanswered questions")
+
+**Why:** Agent content, immutable. Separate from Invocations (which log tool execution). Agents query ObservationEvents to discover work.
+
+### Narrative
+Summarization of turn's work.
+
+**Fields:**
+- `id: String` (UUID)
+- `roomId: String`
+- `turnNumber: int`
+- `generatedContent: String` (AI-generated summary)
+- `editedContent: String?` (manager-edited version if changed)
+- `editedAt: DateTime?` (when manager edited)
+- `editedBy: String?` (who edited)
+- `keyDecisions: List<String>` (extracted decisions)
+- `unresolvedBlockers: List<String>` (ObservationEvent IDs of blockers)
+- `nextSteps: List<String>` (what should happen next)
+- `embedding: List<double>?` (for semantic search)
+
+**Patterns:** Embeddable, Trainable — feedback on narrative quality trains NarrativeTool
+
+**Why:** Summaries agent content for manager review. Manager can edit directly (training signal). Separate from Turn (Turn is timing, Narrative is semantic summary).
+
+**Manager Edit as Invocation:** When manager edits narrative, logs `component: 'manager_edit_narrative'` with before/after content. Training signal for NarrativeTool.
+
+### TaskAssignment
+Work unit assigned to agent.
+
+**Fields:**
+- `id: String` (UUID)
+- `roomId: String`
+- `agentId: String` (assigned to)
+- `description: String` (what to do)
+- `priority: int` (1-5, 5=urgent)
+- `status: String` ('pending', 'claimed', 'in_progress', 'completed')
+- `claimedBy: String?` (which agent claimed it, if not assigned)
+- `claimedAt: DateTime?`
+- `completedAt: DateTime?`
+- `createdAt: DateTime`
+
+**Why:** Manager assigns work. Agents can claim tasks themselves (claim = start). All agents see all tasks (transparency). Logged as Invocations when claimed/completed (training signal).
+
+### Invocation
+(From Everything Stack) Record of component execution.
+
+**Fields:**
+- `id: String` (UUID)
+- `userId: String` (which agent/human triggered it)
+- `componentType: String` ('agent_orchestrator', 'publish_observation_tool', 'discovery_tool', 'narrative_tool', 'task_tool', 'manager_edit_narrative', 'manager_edit_task', etc.)
+- `input: String` (what was requested)
+- `output: String` (what was produced)
+- `success: bool`
+- `confidence: double`
+- `metadata: Map<String, dynamic>` (component-specific: embedding model used, search results returned, etc.)
+- `correlationId: String` (links invocation chain)
+- `roomId: String` (scoped to room)
+- `timestamp: DateTime`
+
+**Patterns:** Trainable (feedback trains tool selection, agent behavior)
+
+**Why:** Everything logged for learning. No distinction between "manager action" and "agent action"—all treated as invocations. System learns what works.
 
 ---
 
-## Core Services
+## Core Tools (Explicitly Invocable)
 
-### WhiteboardService
-Manages semantic search on AgentEvents.
+Tools are called by agents or manager via Coordinator/AgentOrchestrator and logged as Invocations.
 
-**Capabilities:**
-- Store events with embeddings
-- Semantic search: "Find open questions related to X"
-- Find latest events for an agent
-- Query by eventType or time range
+### PublishObservationTool
+Agents publish observations to room.
 
-**Why**: Agents need fast semantic search to discover related work. Framework provides HNSW (8-12ms queries) on all platforms (ObjectBox native, pure Dart on web).
+**Invocation:**
+```
+Input: { agentId, content, eventType, respondingToEventId?, confidence? }
+Output: ObservationEvent created
+Logged: component='publish_observation_tool', success=true
+```
 
-### TurnManagementService
+### DiscoveryTool
+Agents search for work (queries ObservationEvents + Tasks).
+
+**Invocation:**
+```
+Input: { agentId, query: "find blockers", semanticQuery: embedding }
+Output: List<ObservationEvent>, List<TaskAssignment>
+Logged: component='discovery_tool', success=true, resultCount=N
+```
+
+### NarrativeTool
+Generates summary of turn's observations.
+
+**Invocation:**
+```
+Input: { roomId, turnId }
+Output: Narrative entity created (or updated if edited)
+Logged: component='narrative_tool', success=true
+```
+
+If manager edits narrative afterward:
+```
+Input: { narrativeId, newContent }
+Output: Narrative.editedContent updated
+Logged: component='manager_edit_narrative', success=true
+```
+
+### TaskTool
+CRUD for task assignments.
+
+**Invocations:**
+```
+createTask(roomId, agentId, description, priority) → TaskAssignment
+claimTask(taskId, agentId) → TaskAssignment with status='claimed'
+updateTask(taskId, updates) → TaskAssignment
+completeTask(taskId) → TaskAssignment with status='completed'
+```
+
+All logged as Invocations for learning.
+
+### TurnManagementTool
 Manages turn lifecycle.
 
-**Capabilities:**
-- Create new turn
-- Mark turn active/ended
-- Query events in a turn
-- Trigger NarrativeService at turn end
-
-**Why**: Turns are the coordination heartbeat. Service ensures consistency.
-
-### NarrativeService
-Background job that runs end-of-turn.
-
-**Capabilities:**
-- Ingest all events from a turn
-- Extract per-agent intent (via LLM or heuristic)
-- Generate system-level summary
-- Attach to TurnSummary as metadata
-
-**Why**: Manager reads 1 summary, not 100 events. Prevents decision fatigue.
+**Invocations:**
+```
+startTurn(roomId) → Turn created, agents notified
+endTurn(roomId) → Turn marked ended, triggers NarrativeTool
+getRoomState(roomId) → Room + current agents + active tasks + recent narratives
+```
 
 ---
 
-## The Learning Loop
+## Core Services (Infrastructure)
 
-The system observes what works and adapts:
+### AgentOrchestrator
+Orchestrates agent logic execution.
 
-1. **Agents propose** — Publish AgentEvents
-2. **Manager reviews** — Reads TurnSummary, optionally assigns TaskAssignment
-3. **System logs** — Every agent action is an Invocation (what did they do, how long, accuracy)
-4. **Feedback collected** — Manager rates turn quality, agent effectiveness
-5. **Persona adapts** — Threshold, discovery strategy adjust based on feedback
+**Responsibilities:**
+1. Trigger on turn start
+2. Agent runs deterministic logic (conditional rules, not LLM)
+3. Agent calls tools via ToolExecutor (same as humans use)
+4. Invocations logged identically
 
-Over time: Better agents, better coordination, less explicit manager direction needed.
+**Does NOT:**
+- Call LLM for reasoning (that's Coordinator)
+- Ask NamespaceSelector (agents don't categorize tools)
 
----
+### Coordinator (From Everything Stack)
+Orchestrates LLM-based reasoning (humans + agents when LLM needed).
 
-## Everything Stack Foundation
+**Only used when:**
+- NarrativeTool needs LLM to summarize observations
+- Manager needs LLM to evaluate something
+- Agent needs LLM to reason (optional, not primary agent path)
 
-Agent Town Hall inherits:
+### ContextInjector
+Aggregates context for agents running in room.
 
-| Capability | From Everything Stack | Used For |
-|-----------|-------------|----------|
-| **Dual persistence** | ObjectBox (native) + IndexedDB (web) | Events, assignments, summaries stored offline-first |
-| **Semantic search** | HNSW vector indexing | WhiteboardService queries |
-| **Event/Invocation/Turn model** | Core entities + adapters | Agent actions logged as Invocations, coordinated via Turns |
-| **Trainable mixin** | Pattern + adapters | Persona, Invocation, TurnSummary improve from feedback |
-| **Cross-platform** | Framework design | Runs on iOS, Android, Web, macOS, Windows, Linux |
-| **Sync to Supabase** | SyncService + adapters | Offline events sync when online |
-
-Agent Town Hall doesn't solve persistence, sync, vector search, or cross-platform testing. Everything Stack solves those once.
-
----
-
-## Coordination Rules (Guardrails)
-
-These prevent agent chatter and decision fatigue:
-
-1. **Question threshold** — Agents don't ask questions below confidence threshold (Persona.threshold)
-2. **Turn limits** — Each turn has max duration (agents pause at turn end regardless)
-3. **Silence precedent** — If an agent already answered a question, don't re-ask it
-4. **SLA guardrails** — Task assignments have deadlines; escalate if missed
-5. **Narrative-first** — Manager makes decisions based on NarrativeService summaries, not raw events
+**Returns:**
+- Agent's Role + Persona + PersonaAdaptation
+- Room state (agents, recent narratives, blockers)
+- Discovered ObservationEvents (from DiscoveryTool)
+- Task assignments for this agent
 
 ---
 
-## Phase 1 Deliverables (Foundation)
+## Turn Lifecycle
 
-- [ ] Domain entities: AgentEvent, TaskAssignment, TurnSummary, Persona
-- [ ] Repositories with dual persistence (ObjectBox + IndexedDB)
-- [ ] WhiteboardService with semantic search
-- [ ] TurnManagementService with turn lifecycle
-- [ ] NarrativeService stub (extracts intent)
-- [ ] E2E tests validating turn flow
+**Turn N: Active**
+1. TurnManagementTool.startTurn(roomId) called
+2. Agents run concurrently, publish ObservationEvents
+3. AgentOrchestrator processes agent logic
+4. DiscoveryTool queries ObservationEvents + Tasks
+5. All agents see all new events (full transparency)
+6. Everything logged as Invocations
+
+**Turn N → N+1: Transition**
+1. TurnManagementTool.endTurn(roomId) called (manager decides, or system heuristic: "10+ events, 5 min elapsed")
+2. NarrativeTool generates Narrative from all ObservationEvents in turn
+3. Narrative stored, linked to Turn.narrativeId
+4. Manager reviews Narrative (can edit directly—logs as Invocation)
+5. Manager can create TaskAssignments for turn N+1
+
+**Turn N+1: Active**
+1. TurnManagementTool.startTurn(roomId) returns updated context
+2. ContextInjector includes:
+   - Narrative from turn N
+   - New TaskAssignments
+   - All prior ObservationEvents (queryable)
+   - Updated PersonaAdaptations
+3. Agents resume work with full context
 
 ---
 
-## Why These Decisions?
+## Room Lifecycle
 
-See **DECISIONS.md** for architectural trade-offs: UUID keys, adapter pattern, dual persistence, Trainable mixins, Turn boundaries, type safety, execution fungibility, infrastructure completeness.
+**Room Created:**
+- Manager defines scope, adds agents (with roles + personas)
+- TurnManagementTool.startTurn() begins turn 1
+- Agents start work
+
+**Room Active:**
+- Agents collaborate across multiple turns
+- Manager edits narratives, tasks, optionally swaps agent personas/roles
+- System learns: PersonaAdaptation updates per turn feedback
+
+**Room Completed:**
+- Manager decides scope is resolved: "end room" or "mark complete"
+- Room status → 'completed', completedAt timestamp
+- Narratives + Invocations persist (historical record)
+- Room can be archived (moved to read-only storage)
 
 ---
 
-## Documentation
+## Learning Loop
 
-- **README.md** — Project overview, current status, quick start
-- **DECISIONS.md** — Why architectural choices were made
-- **PATTERNS.md** — How to build with Everything Stack
-- **TESTING.md** — E2E testing approach
-- **DESIGN.md** — Detailed design (reference for implementation)
+Everything is logged for continuous learning:
+
+1. **Agent publishes** → Invocation logged (component='publish_observation_tool')
+2. **Agent discovers** → Invocation logged (component='discovery_tool')
+3. **NarrativeTool summarizes** → Invocation logged (component='narrative_tool')
+4. **Manager edits narrative** → Invocation logged (component='manager_edit_narrative') — training signal
+5. **Feedback collected** → PersonaAdaptation updated
+6. **Next turn** → Agent uses learned adaptations
+
+PersonaAdaptation.learnedThresholds and discoveryStrategy evolve per turn. No separate training pipeline—learning is continuous via Trainable.recordInvocation() and trainFromFeedback().
 
 ---
 
-**Last Updated**: December 26, 2025
-**Status**: Phase 1 architecture. For current work and blockers, see .claude/CLAUDE.md
+## Architecture Constraints
+
+- **All entities extend BaseEntity** (from Everything Stack)
+- **All repositories extend EntityRepository<T>** (generic CRUD + semantic search)
+- **Entities are pure Dart** (no ORM decorators in domain)
+- **Dual persistence:** ObjectBox (native), IndexedDB (web)
+- **Sync:** Supabase (offline-first)
+- **All platforms first-class:** iOS, Android, macOS, Windows, Linux, Web
+- **Everything logged:** Invocations are atomic unit of learning
+
+---
+
+## Phase 1 Deliverables
+
+- [ ] Domain entities: Room, Agent, Role, Persona, PersonaAdaptation, Turn, ObservationEvent, Narrative, TaskAssignment
+- [ ] Repositories with dual persistence (ObjectBox native, IndexedDB web)
+- [ ] AgentOrchestrator with deterministic logic
+- [ ] Tools: PublishObservationTool, DiscoveryTool, NarrativeTool, TaskTool, TurnManagementTool
+- [ ] E2E test: One complete turn
+  - Manager creates room with 3 agents
+  - Agents publish 6 ObservationEvents (mix of questions, blockers, solutions)
+  - NarrativeTool generates Narrative
+  - Manager edits Narrative (logs Invocation)
+  - Turn ends, Turn 2 begins
+  - Verify all Invocations logged, room state consistent
+- [ ] Invocation logging throughout all paths (agent + manager actions)
+
+---
+
+## What's Inherited vs Created
+
+**Inherited from Everything Stack:**
+- Coordinator (LLM orchestration)
+- Trainable + Embeddable patterns
+- Event/Invocation/Turn/Feedback entities
+- Persistence adapters (ObjectBox + IndexedDB)
+- EmbeddingService (vector generation)
+- ToolRegistry + ToolExecutor
+- ContextInjector base
+- SyncService (Supabase)
+
+**Created for Agent Townhall:**
+- AgentOrchestrator (agent execution logic)
+- Room, Agent, Role, Persona, PersonaAdaptation, ObservationEvent, Narrative, TaskAssignment
+- PublishObservationTool, DiscoveryTool, NarrativeTool, TaskTool, TurnManagementTool
+- Manager control surface (edit narratives, tasks, agents, scope)
+
+**Deferred:**
+- Edge graph (defer until relationship queries are complex)
+- Multi-device sync (future phase)
+- Advanced scheduling (future phase)
+
+---
+
+## Why This Architecture Works
+
+1. **Unified infrastructure** — Agents and manager use same tools, same logging, same feedback
+2. **Semantic discovery** — Agents find work via ObservationEvent search, not explicit instructions
+3. **Asynchronous coordination** — Narratives enable turn-based decision-making without constant back-and-forth
+4. **Learning from real execution** — Every invocation logged, feedback trains adaptations continuously
+5. **Manager control** — Scope-driven, manager orchestrates everything (no agent autonomy)
+6. **Cross-platform** — Built on Everything Stack, works on all 6 platforms
+
+---
+
+**Last Updated:** January 2, 2026
+**Status:** Phase 1 architecture locked, ready for implementation
+
