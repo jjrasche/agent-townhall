@@ -35,7 +35,19 @@ class PublishObservationInput {
     required this.eventType,
     this.respondingToEventId,
     this.confidence,
-  });
+  }) {
+    _validate();
+  }
+
+  /// Validation: fail-fast on invalid inputs
+  void _validate() {
+    if (content.isEmpty || content.length > 5000) {
+      throw ArgumentError('content: 1-5000 chars required');
+    }
+    if (confidence != null && (confidence! < 0.0 || confidence! > 1.0)) {
+      throw ArgumentError('confidence: 0.0-1.0 required');
+    }
+  }
 
   factory PublishObservationInput.fromJson(Map<String, dynamic> json) =>
       _$PublishObservationInputFromJson(json);
@@ -92,7 +104,22 @@ class DiscoveryInput {
     required this.query,
     this.topK = 5,
     this.scoreThreshold = 0.6,
-  });
+  }) {
+    _validate();
+  }
+
+  /// Validation: fail-fast on invalid inputs
+  void _validate() {
+    if (query.isEmpty || query.length > 500) {
+      throw ArgumentError('query: 1-500 chars required');
+    }
+    if (topK < 1 || topK > 100) {
+      throw ArgumentError('topK: 1-100 required');
+    }
+    if (scoreThreshold < 0.0 || scoreThreshold > 1.0) {
+      throw ArgumentError('scoreThreshold: 0.0-1.0 required');
+    }
+  }
 
   factory DiscoveryInput.fromJson(Map<String, dynamic> json) =>
       _$DiscoveryInputFromJson(json);
@@ -173,7 +200,19 @@ class NarrativeInput {
     required this.roomId,
     required this.turnNumber,
     this.maxTokens,
-  });
+  }) {
+    _validate();
+  }
+
+  /// Validation: fail-fast on invalid inputs
+  void _validate() {
+    if (turnNumber < 1) {
+      throw ArgumentError('turnNumber: >= 1 required');
+    }
+    if (maxTokens != null && (maxTokens! < 100 || maxTokens! > 4000)) {
+      throw ArgumentError('maxTokens: 100-4000 if specified');
+    }
+  }
 
   factory NarrativeInput.fromJson(Map<String, dynamic> json) =>
       _$NarrativeInputFromJson(json);
@@ -253,7 +292,45 @@ class TaskToolInput {
     this.description,
     this.priority,
     this.agentId,
-  });
+  }) {
+    _validate();
+  }
+
+  /// Validation: operation-specific requirements
+  void _validate() {
+    final validOps = {'create', 'claim', 'complete', 'cancel'};
+    if (!validOps.contains(operation)) {
+      throw ArgumentError('operation: must be one of $validOps');
+    }
+
+    switch (operation) {
+      case 'create':
+        if (roomId == null || roomId!.isEmpty) {
+          throw ArgumentError('create: roomId required');
+        }
+        if (description == null || description!.isEmpty || description!.length > 5000) {
+          throw ArgumentError('create: description 1-5000 chars required');
+        }
+        if (priority == null || priority! < 1 || priority! > 5) {
+          throw ArgumentError('create: priority 1-5 required');
+        }
+        break;
+      case 'claim':
+      case 'complete':
+        if (taskId == null || taskId!.isEmpty) {
+          throw ArgumentError('$operation: taskId required');
+        }
+        if (agentId == null || agentId!.isEmpty) {
+          throw ArgumentError('$operation: agentId required');
+        }
+        break;
+      case 'cancel':
+        if (taskId == null || taskId!.isEmpty) {
+          throw ArgumentError('cancel: taskId required');
+        }
+        break;
+    }
+  }
 
   factory TaskToolInput.fromJson(Map<String, dynamic> json) =>
       _$TaskToolInputFromJson(json);
