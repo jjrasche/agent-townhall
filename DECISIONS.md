@@ -6,6 +6,39 @@ This document explains the trade-offs and reasoning behind major architectural d
 
 ---
 
+## What Gets Documented Here
+
+A decision belongs in DECISIONS.md if:
+
+1. **Has meaningful trade-offs** — Choosing X means NOT choosing Y, and both were viable
+   - ✅ "UUID vs sequential IDs" (both work, we picked UUID, changed persistence logic)
+   - ❌ "Delete example code" (no trade-off, just cleanup)
+
+2. **Locked in** — Changing it later requires significant rework across multiple systems
+   - ✅ "Adapter-as-repository pattern" (affects how all entities are persisted)
+   - ❌ "Initialize CI/CD" (just copying a workflow file)
+
+3. **Affects system design** — Not a single component, but architecture
+   - ✅ "Dual persistence (ObjectBox + IndexedDB)" (shapes repository interfaces, query patterns, testing)
+   - ❌ "Use ObjectBox for native persistence" (implementation detail once dual persistence is decided)
+
+4. **Future developers need to understand the reasoning** — Otherwise they'll undo the decision
+   - ✅ "Why Turn is separate from Event+Invocation" (engineers will want to flatten it; this explains why not to)
+   - ❌ "How to run flutter test on chrome" (that's in documentation, not decisions)
+
+5. **Has non-obvious consequences** — The impact isn't obvious from the decision alone
+   - ✅ "Type safety everywhere (AI safety)" (consequence: LLM-generated code is safer)
+   - ❌ "All platforms first-class" (obvious consequence: need to test on all platforms)
+
+**Conversely, what does NOT belong here:**
+- Setup/initialization instructions (belongs in CLAUDE.md)
+- Workflow/process improvements (belongs in README or docs/)
+- Bug fixes or cleanup (commit message is enough)
+- Tool choices that don't affect architecture (use Riverpod, use Supabase, etc.)
+- Feature completeness (belongs in Current Work section of CLAUDE.md)
+
+---
+
 ## UUID vs Sequential IDs
 
 **Decision**: UUID as primary key for all entities
