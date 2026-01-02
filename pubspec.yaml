@@ -1,0 +1,87 @@
+name: everything_stack_template
+description: Everything Stack template - clone and customize for your project.
+version: 0.2.1
+
+# Update these when initializing your project:
+# name: your_project_name
+# description: Your project description
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.24.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Local database (offline-first)
+  # ObjectBox - native platforms (Android, iOS, desktop)
+  objectbox: ^4.0.3
+  objectbox_flutter_libs: ^4.0.3
+  
+  # Cloud database (sync)
+  supabase_flutter: ^2.3.0
+
+  # Crash reporting
+  firebase_core: ^3.0.0
+  firebase_crashlytics: ^4.1.0
+
+  # State management
+  flutter_riverpod: ^2.4.0
+
+  # Dependency injection
+  get_it: ^7.0.0
+
+  # Utilities
+  uuid: ^4.2.0
+  path_provider: ^2.1.0
+  connectivity_plus: ^5.0.0
+  geolocator: ^10.1.0
+  rfc_6902: ^0.3.1
+  json_annotation: ^4.8.0
+  http: ^1.1.0
+  flutter_dotenv: ^5.1.0
+
+  # WebSocket support (for Deepgram STT)
+  web_socket_channel: ^3.0.0
+
+  # File input and storage
+  image_picker: ^1.1.0
+  record: ^6.1.2
+  just_audio: ^0.9.36
+  file_picker: ^8.0.0
+  image: ^4.1.0
+
+  # Text-to-speech synthesis (STT is via Deepgram API, not local plugin)
+  flutter_tts: ^4.2.3
+
+  # Web storage (IndexedDB)
+  idb_shim: ^2.4.0
+
+  # HNSW vector search (for web platform)
+  local_hnsw: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+  # Code generation for JSON serialization
+  json_serializable: ^6.7.0
+  build_runner: ^2.4.0
+  analyzer: ^5.13.0
+
+  # ObjectBox code generation
+  objectbox_generator: ^4.0.3
+
+  # Linting
+  flutter_lints: ^3.0.0
+
+  # Testing
+  mockito: ^5.4.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
